@@ -2,7 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useWallet } from '@/context/wallet-context'
+
 
 const mockRooms = [
   { id: 1, name: "Marketing Analytics", lastAccessed: "2 hours ago" },
@@ -11,21 +11,7 @@ const mockRooms = [
 ]
 
 export default function HistoryPage() {
-  const { address, connect } = useWallet()
-
-  if (!address) {
-    return (
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto text-center">
-          <h2 className="text-2xl font-semibold mb-4">Connect Wallet</h2>
-          <p className="text-muted-foreground mb-6">
-            Connect your wallet to view your room history
-          </p>
-          <Button onClick={connect}>Connect Wallet</Button>
-        </div>
-      </main>
-    )
-  }
+  
 
   return (
     <main className="container mx-auto px-4 py-8">

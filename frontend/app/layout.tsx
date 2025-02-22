@@ -1,20 +1,27 @@
-import { WalletProvider } from '@/context/wallet-context'
+"use client"
+
 import { NavBar } from '@/components/nav-bar'
 import "@/app/globals.css"
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+
+
+
   return (
-    <html lang="en">
-      <body>
-        <WalletProvider>
+    <AuthProvider>
+      <html lang="en">
+        <body>
           <NavBar />
           {children}
-        </WalletProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </AuthProvider>
   )
 }
 

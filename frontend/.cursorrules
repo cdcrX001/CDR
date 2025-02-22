@@ -1,0 +1,93 @@
+# Tech Stack
+- Next.js
+- Supabase
+
+# Project Structure
+- frontend/
+    - app/
+        - about/
+            - page.tsx
+            - layout.tsx
+        - blog/
+            - page.tsx
+            - layout.tsx
+        - docs/
+            - page.tsx
+            - layout.tsx
+        - explore/
+            - page.tsx
+            - layout.tsx
+        - history/
+            - page.tsx
+            - layout.tsx
+        - pricing/
+            - page.tsx
+            - layout.tsx
+        - dashboard/
+            - page.tsx
+            - layout.tsx
+        - confirm-email/
+            - page.tsx
+            - layout.tsx
+        - error.tsx
+        - providers.tsx
+        - page.tsx
+        - layout.tsx
+    - components/
+        - ui/
+            - button.tsx
+            - input.tsx
+            - card.tsx
+            - nav-bar.tsx
+            - sign-in-form.tsx
+            - sign-up-form.tsx
+            - footer.tsx
+            - error-boundary.tsx
+            - providers.tsx
+        - create-room.tsx
+        - icons.tsx
+        - nav-bar.tsx
+        - primitives.tsx
+        - SignInForm.tsx
+        - SignUpForm.tsx
+        - theme-switch.tsx
+    - config/
+        - site.ts
+        - fonts.ts
+    - lib/
+        - supabaseClient.ts
+        - utils.ts
+    - styles/
+        - globals.css
+    - types/
+        - index.ts
+        
+
+# Database
+- Supabase
+
+# API
+- Fastapi
+
+# Authentication
+- JWT
+
+# Error Handling
+- Zod
+
+# Documentation
+- 
+
+# Notes
+- Write comments for all functions and classes
+- Write docstrings for all functions and classes
+- Use type hints
+- Use Zod models for request and response validation
+
+
+
+
+
+
+
+

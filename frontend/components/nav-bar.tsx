@@ -3,17 +3,31 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useWallet } from '@/context/wallet-context'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 
 export function NavBar() {
   const pathname = usePathname()
-  const { address, connect, disconnect } = useWallet()
+  const [userEmail, setUserEmail] = useState('')
+  const { setUser, setIsAuthenticated } = useAuth();
+
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setIsAuthenticated(!!user);
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogout = () => {
+    supabase.auth.signOut()
+    // Optionally, redirect to the home page
+    window.location.href = '/'
+  }
 
   return (
     <nav className="border-b">
@@ -27,8 +41,8 @@ export function NavBar() {
           </Link>
           <div className="flex items-center space-x-4">
             <Link 
-              href="/" 
-              className={`${pathname === '/' ? 'text-primary' : 'text-muted-foreground'} hover:text-primary transition-colors`}
+              href="/dashboard" 
+              className={`${pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'} hover:text-primary transition-colors`}
             >
               Dashboard
             </Link>
@@ -47,23 +61,20 @@ export function NavBar() {
           </div>
         </div>
         <div>
-          {!address ? (
-            <Button onClick={connect}>
-              Connect Wallet
-            </Button>
+          {!isAuthenticated ? (
+            <>
+              <Link href="/auth/sign-in">
+                <Button className="mr-2">Sign In</Button>
+              </Link>
+              <Link href="/auth/sign-up">
+                <Button variant="outline">Sign Up</Button>
+              </Link>
+            </>
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  {address}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={disconnect}>
-                  Disconnect
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center space-x-4">
+              <span className="text-muted-foreground">{userEmail}</span>
+              <Button onClick={handleLogout} variant="outline">Logout</Button>
+            </div>
           )}
         </div>
       </div>
