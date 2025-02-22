@@ -1,0 +1,46 @@
+# Tech Stack
+- FastAPI
+- Supabase
+
+# Project Structure
+- backend/
+    - app/
+        - api/
+            - endpoints/
+                - __init__.py
+                - auth.py
+                - users.py
+        - core/
+            - config.py
+            - db.py
+            - models.py
+
+
+# Database
+- Supabase
+
+# API
+- FastAPI
+
+# Authentication
+- JWT
+
+# Error Handling
+- Pydantic
+
+# Documentation
+- Swagger
+
+# Notes
+- Write comments for all functions and classes
+- Write docstrings for all functions and classes
+- Use type hints
+- Use Pydantic models for request and response validation
+
+
+
+
+
+
+
+
