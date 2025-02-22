@@ -26,6 +26,12 @@ class DatasetDetails(BaseModel):
     organization_name: str
     sample_queries: List[str]
     rules: str
+    isPublic: bool
+    whitelistEmails: List[str]
+
+# Add this model for access requests
+class RequestAccess(BaseModel):
+    email: str
 
 app = FastAPI()
 
@@ -51,25 +57,27 @@ class MarketplaceItem(BaseModel):
     exampleQueries: List[str]
     rules: str
     enclave_id: str
+    isPublic: bool
 
-# Update the database management code
+# Database path
+DB_PATH = 'Backend/enclave_mapping.db'
+
 def init_db():
-    """Initialize the SQLite database"""
+    """Initialize the SQLite database and create tables if they do not exist."""
     # Ensure the Backend directory exists
     os.makedirs('Backend', exist_ok=True)
-    
-    db_path = 'Backend/enclave_mapping.db'
-    with sqlite3.connect(db_path) as conn:
+
+    with sqlite3.connect(DB_PATH) as conn:
+        # Create enclave_mapping table
         conn.execute('''
         CREATE TABLE IF NOT EXISTS enclave_mapping (
             enclave_id TEXT PRIMARY KEY,
             private_key_path TEXT NOT NULL,
-            certificate_path TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+            certificate_path TEXT NOT NULL
+        );
         ''')
-        
-        # Create a new table for dataset details
+
+        # Create dataset_details table
         conn.execute('''
         CREATE TABLE IF NOT EXISTS dataset_details (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,9 +87,16 @@ def init_db():
             organization_name TEXT NOT NULL,
             sample_queries TEXT NOT NULL,
             rules TEXT NOT NULL,
+            isPublic BOOLEAN NOT NULL,
+            whitelistEmails TEXT NOT NULL,
             FOREIGN KEY (enclave_id) REFERENCES enclave_mapping (enclave_id)
-        )
+        );
         ''')
+
+# Call the init_db function when the application starts
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 @contextmanager
 def get_db():
@@ -95,9 +110,6 @@ def get_db():
         yield conn
     finally:
         conn.close()
-
-# Initialize the database when the application starts
-init_db()
 
 @app.post("/sign-csr/")
 async def sign_csr(request: CSRRequest):
@@ -183,7 +195,8 @@ async def get_marketplace_items():
                     organization_name as provider,
                     sample_queries,
                     rules,
-                    enclave_id  -- Ensure enclave_id is selected
+                    enclave_id,
+                    isPublic
                 FROM dataset_details
             """)
             
@@ -202,7 +215,8 @@ async def get_marketplace_items():
                     provider=row_dict['provider'],
                     exampleQueries=sample_queries,
                     rules=row_dict['rules'],
-                    enclave_id=row_dict['enclave_id']  # Ensure enclave_id is included here
+                    enclave_id=row_dict['enclave_id'],
+                    isPublic=row_dict['isPublic']
                 )
                 marketplace_items.append(item)
                 
@@ -272,10 +286,21 @@ async def save_dataset(enclaveid: str, details: DatasetDetails):
     try:
         with get_db() as conn:
             conn.execute(
-                "INSERT INTO dataset_details (enclave_id, dataset_name, description, organization_name, sample_queries, rules) VALUES (?, ?, ?, ?, ?, ?)",
-                (enclaveid, details.dataset_name, details.description, details.organization_name, json.dumps(details.sample_queries), details.rules)
+                "INSERT INTO dataset_details (enclave_id, dataset_name, description, organization_name, sample_queries, rules, isPublic, whitelistEmails) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (enclaveid, details.dataset_name, details.description, details.organization_name, json.dumps(details.sample_queries), details.rules, details.isPublic, json.dumps(details.whitelistEmails))
             )
             conn.commit()
         return {"message": "Dataset details saved successfully"}
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/request-access/{enclaveid}")
+async def request_access(enclaveid: str, request: RequestAccess):
+    """Handle access requests for a private enclave"""
+    try:
+        # Here you can implement logic to store the access request
+        # For example, you could save it to a database or send an email notification
+        print(f"Access request for enclave {enclaveid} from {request.email}")
+        return {"message": "Access request received"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing access request: {str(e)}")

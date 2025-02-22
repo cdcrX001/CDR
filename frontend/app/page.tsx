@@ -19,6 +19,7 @@ interface MarketplaceItem {
   exampleQueries: string[];
   rules: string;
   enclave_id: string;
+  isPublic: boolean;
 }
 
 // Add this type near your other interfaces
@@ -34,6 +35,8 @@ interface DatasetDetails {
   organization_name: string;
   sample_queries: string[];
   rules: string;
+  isPublic: boolean;
+  whitelistEmails: string[];
 }
 
 // Remove mock data
@@ -162,6 +165,30 @@ const handleUseDataset = async (enclaveId: string, datasetName: string) => {
     }
 };
 
+const handleRequestAccess = async (enclaveId: string) => {
+    const email = prompt("Please enter your email address to request access:");
+    if (email) {
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/request-access/${enclaveId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            toast.success('Access request sent successfully!');
+        } catch (error) {
+            console.error('Error requesting access:', error);
+            toast.error('Failed to send access request');
+        }
+    }
+};
+
 export default function Home() {
   const [showMarketplace, setShowMarketplace] = useState(false)
   const [marketplaceData, setMarketplaceData] = useState<MarketplaceItem[]>([])
@@ -173,6 +200,8 @@ export default function Home() {
     organization_name: '',
     sample_queries: [],
     rules: '',
+    isPublic: true,
+    whitelistEmails: [],
   });
   const [showDatasetForm, setShowDatasetForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -311,7 +340,11 @@ export default function Home() {
         const enclaveResult = await response.json();
         
         // Then save the dataset details with the same enclaveId
-        const result = await saveDatasetDetails(enclaveId, datasetDetails);
+        const result = await saveDatasetDetails(enclaveId, {
+            ...datasetDetails,
+            isPublic: datasetDetails.isPublic,
+            whitelistEmails: datasetDetails.isPublic ? [] : datasetDetails.whitelistEmails
+        });
         if (result) {
             toast.success('Dataset details saved successfully!');
             setShowDatasetForm(false);
@@ -324,6 +357,8 @@ export default function Home() {
                 organization_name: '',
                 sample_queries: [],
                 rules: '',
+                isPublic: true,
+                whitelistEmails: [],
             });
         } else {
             toast.error('Failed to save dataset details');
@@ -335,23 +370,30 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="container mx-auto px-4 py-8">
       {/* Navigation Bar */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-end h-16 items-center">
+      <nav className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between h-16 items-center">
+            <div className="text-xl font-bold">Data Clean Room</div>
             <div className="flex space-x-4">
               <Button
-                variant="ghost"
                 onClick={() => setShowMarketplace(false)}
-                className={!showMarketplace ? "text-blue-600" : "text-gray-600"}
+                className={`px-4 py-2 rounded ${
+                  !showMarketplace 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700'
+                }`}
               >
                 Home
               </Button>
               <Button
-                variant="ghost"
                 onClick={() => setShowMarketplace(true)}
-                className={showMarketplace ? "text-blue-600" : "text-gray-600"}
+                className={`px-4 py-2 rounded ${
+                  showMarketplace 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700'
+                }`}
               >
                 Marketplace
               </Button>
@@ -360,8 +402,8 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full px-4 py-8">
+      {/* Main Content - Add margin-top to account for fixed navbar */}
+      <main className="mt-20">
         {!showMarketplace ? (
           // Home Page Content
           <div className="flex flex-col items-center justify-center">
@@ -438,6 +480,26 @@ export default function Home() {
                     required
                   />
                 </div>
+                <div>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={datasetDetails.isPublic}
+                      onChange={() => setDatasetDetails({ ...datasetDetails, isPublic: !datasetDetails.isPublic })}
+                    />
+                    Public Enclave
+                  </label>
+                </div>
+                {!datasetDetails.isPublic && (
+                  <div>
+                    <label>Whitelist Emails (comma-separated):</label>
+                    <input
+                      type="text"
+                      value={datasetDetails.whitelistEmails.join(', ')}
+                      onChange={(e) => setDatasetDetails({ ...datasetDetails, whitelistEmails: e.target.value.split(',').map(email => email.trim()) })}
+                    />
+                  </div>
+                )}
                 <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 mt-4">
                   Save Dataset Details
                 </Button>
@@ -446,89 +508,118 @@ export default function Home() {
           </div>
         ) : (
           // Marketplace Content
-          <div className="w-full max-w-7xl">
-            <h2 className="text-2xl font-bold mb-6">Data Marketplace</h2>
-            {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                    <div className="text-lg text-gray-600">Loading marketplace data...</div>
-                </div>
-            ) : marketplaceData.length === 0 ? (
-                <div className="text-center py-8">
-                    <p className="text-lg text-gray-600">No datasets available in the marketplace yet.</p>
-                    <Button
-                        onClick={() => {
-                            setShowMarketplace(false);
-                            setShowDatasetForm(true);
-                        }}
-                        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                        Add Your Dataset
-                    </Button>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {marketplaceData.map((item) => (
-                        <div key={item.id} className="flex flex-col">
-                            <Card className="flex-1">
-                                <CardHeader>
-                                    <CardTitle>{item.name}</CardTitle>
-                                    <CardDescription>{item.provider}</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-gray-600 mb-4">{item.price}</p>
-                                    <p className="text-gray-500 mb-2">Enclave ID: {item.enclave_id}</p>
-                                    <div className="flex justify-between">
-                                        <Button 
-                                            onClick={() => setExpandedCard(expandedCard === item.id ? null : item.id)}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white w-full px-4 py-2 rounded"
-                                        >
-                                            {expandedCard === item.id ? 'Hide Details' : 'View Details'}
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleUseDataset(item.enclave_id, item.name)}
-                                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded ml-2"
-                                        >
-                                            Use
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            
-                            {/* Expandable Details Section */}
-                            {expandedCard === item.id && (
-                                <Card className="mt-2 border-t-4 border-blue-500">
-                                    <CardContent className="pt-6">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <h3 className="font-semibold text-lg mb-2">Description</h3>
-                                                <p className="text-gray-600">{item.description}</p>
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold text-lg mb-2">Example Queries</h3>
-                                                <ul className="list-disc pl-5 space-y-2">
-                                                    {item.exampleQueries.map((query, index) => (
-                                                        <li key={index} className="text-gray-600">
-                                                            <code className="bg-gray-100 px-2 py-1 rounded">{query}</code>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold text-lg mb-2">Rules</h3>
-                                                <p className="text-gray-600">{item.rules}</p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Marketplace</h2>
+            
+            {/* Available Datasets Section */}
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold mb-4">Available Datasets</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {marketplaceData
+                  .filter(item => item.isPublic)
+                  .map((item) => (
+                    <DatasetCard
+                      key={item.id}
+                      item={item}
+                      expandedCard={expandedCard}
+                      setExpandedCard={setExpandedCard}
+                      onUse={() => handleUseDataset(item.enclave_id, item.name)}
+                      buttonText="Use"
+                    />
+                  ))}
+              </div>
+            </div>
+
+            {/* Request Access Section */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">Request Access Datasets</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {marketplaceData
+                  .filter(item => !item.isPublic)
+                  .map((item) => (
+                    <DatasetCard
+                      key={item.id}
+                      item={item}
+                      expandedCard={expandedCard}
+                      setExpandedCard={setExpandedCard}
+                      onUse={() => handleRequestAccess(item.enclave_id)}
+                      buttonText="Request Access"
+                    />
+                  ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
     </div>
   )
+}
+
+// Create a new DatasetCard component for reusability
+interface DatasetCardProps {
+  item: MarketplaceItem;
+  expandedCard: number | null;
+  setExpandedCard: (id: number | null) => void;
+  onUse: () => void;
+  buttonText: string;
+}
+
+function DatasetCard({ item, expandedCard, setExpandedCard, onUse, buttonText }: DatasetCardProps) {
+  return (
+    <div key={item.id} className="flex flex-col">
+      <Card className="flex-1">
+        <CardHeader>
+          <CardTitle>{item.name}</CardTitle>
+          <CardDescription>{item.provider}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-600 mb-4">{item.price}</p>
+          <p className="text-gray-500 mb-2">Enclave ID: {item.enclave_id}</p>
+          <div className="flex justify-between">
+            <Button 
+              onClick={() => setExpandedCard(expandedCard === item.id ? null : item.id)}
+              className="bg-blue-600 hover:bg-blue-700 text-white w-full px-4 py-2 rounded"
+            >
+              {expandedCard === item.id ? 'Hide Details' : 'View Details'}
+            </Button>
+            <Button
+              onClick={onUse}
+              className={`${buttonText === 'Use' ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white px-4 py-2 rounded ml-2`}
+            >
+              {buttonText}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Expandable Details Section */}
+      {expandedCard === item.id && (
+        <Card className="mt-2 border-t-4 border-blue-500">
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Description</h3>
+                <p className="text-gray-600">{item.description}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Example Queries</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                  {item.exampleQueries.map((query, index) => (
+                    <li key={index} className="text-gray-600">
+                      <code className="bg-gray-100 px-2 py-1 rounded">{query}</code>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Rules</h3>
+                <p className="text-gray-600">{item.rules}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 }
 
