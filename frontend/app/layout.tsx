@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 import { fontSans } from "@/config/fonts";
+import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
   title: "Data Clean Room",
@@ -33,6 +34,7 @@ export default function RootLayout({
         )}
       >
         {children}
+        <Toaster position="top-right" />
       </body>
     </html>
   );
