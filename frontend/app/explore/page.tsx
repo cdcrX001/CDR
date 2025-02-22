@@ -1,70 +1,105 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { useEffect, useState } from 'react'
+import { DatasetCard } from '@/components/dataset-card'
 
-interface Room {
-  id: number
-  name: string
+// Type definition matching backend response
+interface MarketplaceItem {
+  dataset_name: string
   description: string
-  participants: number
+  organization_name: string
+  sample_queries: string[]
+  rules: string
+  isPublic: boolean
+  enclave_id: string
 }
 
-const publicRooms: Room[] = [
-  { id: 1, name: "Global Market Trends", description: "Analyze worldwide market trends and consumer behavior", participants: 1250 },
-  { id: 2, name: "Healthcare Data Collaboration", description: "Collaborative research on anonymized patient data", participants: 890 },
-  { id: 3, name: "Sustainable Supply Chain", description: "Optimize supply chains for sustainability and efficiency", participants: 567 },
-  { id: 4, name: "Financial Fraud Detection", description: "Cross-institutional data sharing for fraud prevention", participants: 723 },
-  { id: 5, name: "Smart City Planning", description: "Urban development insights from multiple data sources", participants: 456 },
-  { id: 6, name: "E-commerce Customer Insights", description: "Aggregate customer behavior across platforms", participants: 1102 },
-  { id: 7, name: "Climate Change Research", description: "Collaborative analysis of global climate data", participants: 789 },
-  { id: 8, name: "Educational Outcomes", description: "Cross-institutional study on learning outcomes", participants: 345 },
-  { id: 9, name: "Cybersecurity Threat Intelligence", description: "Shared data on emerging cyber threats", participants: 678 },
-  { id: 10, name: "Agricultural Yield Optimization", description: "Data-driven insights for improving crop yields", participants: 234 },
-]
-
 export default function ExplorePage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
-  const filteredRooms = publicRooms.filter(room => 
-    room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    room.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  useEffect(() => {
+    const fetchMarketplaceItems = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/marketplace')
+        if (!response.ok) {
+          throw new Error('Failed to fetch marketplace items')
+        }
+        const data = await response.json()
+        console.log(data)
+        setMarketplaceItems(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchMarketplaceItems()
+  }, [])
+
+  const handleUseDataset = (enclaveId: string, name: string) => {
+    console.log(`Using dataset ${name} with enclave ID ${enclaveId}`)
+    // Implement your logic here
+  }
+
+  const handleRequestAccess = (enclaveId: string) => {
+    console.log(`Requesting access to enclave ${enclaveId}`)
+    // Implement your logic here
+  }
+
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>
+  }
+
+  if (error) {
+    return <div className="text-red-500 text-center">{error}</div>
+  }
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Explore Public Rooms</h1>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-8">Explore Data Enclaves</h1>
       
-      <div className="max-w-3xl mx-auto space-y-6">
-        <Input
-          placeholder="Search public rooms..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="mb-6"
-        />
-
-        <div className="grid gap-4">
-          {filteredRooms.map((room) => (
-            <Card key={room.id}>
-              <CardHeader>
-                <CardTitle>{room.name}</CardTitle>
-                <CardDescription>
-                  {room.description}
-                  <br />
-                  <span className="text-sm font-medium text-muted-foreground mt-2">
-                    {room.participants} participants
-                  </span>
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-          {filteredRooms.length === 0 && (
-            <p className="text-center text-muted-foreground">No rooms found matching your search.</p>
-          )}
+      {/* Available Datasets Section */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Available Datasets</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {marketplaceItems
+            .filter(item => item.isPublic)
+            .map((item) => (
+              <DatasetCard
+                key={item.enclave_id}
+                item={item}
+                expandedCard={expandedCard}
+                setExpandedCard={setExpandedCard}
+                onUse={() => handleUseDataset(item.enclave_id, item.dataset_name)}
+                buttonText="Use"
+              />
+            ))}
         </div>
       </div>
-    </main>
+
+      {/* Request Access Section */}
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Request Access Datasets</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {marketplaceItems
+            .filter(item => !item.isPublic)
+            .map((item) => (
+              <DatasetCard
+                key={item.enclave_id}
+                item={item}
+                expandedCard={expandedCard}
+                setExpandedCard={setExpandedCard}
+                onUse={() => handleRequestAccess(item.enclave_id)}
+                buttonText="Request Access"
+              />
+            ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
