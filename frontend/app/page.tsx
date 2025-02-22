@@ -1,113 +1,198 @@
-'use client'
+"use client"
 
-import React, { useState } from 'react'
-import Button from '../components/ui/button'
-import Card from '../components/ui/card'
-import { CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import Link from 'next/link'
-
-// Mock data for the marketplace
-const mockMarketplaceData = [
-  {
-    id: 1,
-    name: "Healthcare Analytics Dataset",
-    description: "Anonymized patient records for research",
-    price: "0.5 ETH",
-    provider: "HealthTech Labs"
-  },
-  {
-    id: 2,
-    name: "Financial Transaction Data",
-    description: "Historical transaction patterns",
-    price: "0.8 ETH",
-    provider: "FinData Corp"
-  },
-  {
-    id: 3,
-    name: "Consumer Behavior Dataset",
-    description: "Retail purchasing patterns",
-    price: "0.3 ETH",
-    provider: "RetailMetrics"
-  }
-]
+import { useRef, useState } from "react"
+import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { CreateRoomDialog } from "@/components/create-room-dialog"
 
 export default function Home() {
-  const [showMarketplace, setShowMarketplace] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const activeRooms = [
+    { id: 1, name: "Marketing Analytics", participants: 5, status: "Active", hasRequests: true },
+    { id: 2, name: "Customer Segmentation", participants: 3, status: "Active", hasRequests: false },
+    { id: 3, name: "Product Usage Insights", participants: 4, status: "Active", hasRequests: true },
+    { id: 4, name: "Sales Performance", participants: 6, status: "Active", hasRequests: false },
+    { id: 5, name: "User Behavior Analysis", participants: 4, status: "Active", hasRequests: true },
+  ]
+
+  const accessRequests = [
+    { id: 1, company: "TechCorp", room: "Marketing Analytics", status: "Pending" },
+    { id: 2, company: "DataInsights", room: "Customer Segmentation", status: "Approved" },
+    { id: 3, company: "AnalyticsPro", room: "Product Usage Insights", status: "Rejected" },
+    { id: 4, company: "MetricsMaster", room: "Sales Performance", status: "Pending" },
+    { id: 5, company: "InsightFlow", room: "User Behavior Analysis", status: "Pending" },
+  ]
+
+  const popularRooms = [
+    { id: 1, name: "Sales Performance", participants: 245 },
+    { id: 2, name: "User Behavior Analysis", participants: 189 },
+    { id: 3, name: "Inventory Optimization", participants: 156 },
+    { id: 4, name: "Customer Feedback Analysis", participants: 134 },
+    { id: 5, name: "Supply Chain Efficiency", participants: 98 },
+  ]
+
+  const scrollContainers = {
+    activeRooms: useRef<HTMLDivElement>(null),
+    accessRequests: useRef<HTMLDivElement>(null),
+    popularRooms: useRef<HTMLDivElement>(null),
+  }
+
+  const scroll = (direction: "left" | "right", section: keyof typeof scrollContainers) => {
+    const container = scrollContainers[section].current
+    if (container) {
+      const scrollAmount = direction === "left" ? -container.offsetWidth : container.offsetWidth
+      container.scrollBy({ left: scrollAmount, behavior: "smooth" })
+    }
+  }
 
   return (
-    <div className="h-screen w-full bg-gradient-to-b from-gray-50 to-gray-100">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-end h-16 items-center">
-            <div className="flex space-x-4">
-              <Button
-                variant="ghost"
-                onClick={() => setShowMarketplace(false)}
-                className={!showMarketplace ? "text-blue-600" : "text-gray-600"}
-              >
-                Home
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setShowMarketplace(true)}
-                className={showMarketplace ? "text-blue-600" : "text-gray-600"}
-              >
-                Marketplace
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Data Clean Room Dashboard</h1>
 
-      {/* Main Content */}
-      <main className="flex items-center justify-center h-[calc(100vh-4rem)] w-full px-4">
-        {!showMarketplace ? (
-          // Home Page Content
-          <div className="flex flex-col items-center justify-center">
-            <Card className="w-[600px] text-center">
-              <CardHeader>
-                <CardTitle className="text-3xl">Welcome to Data Clean Room</CardTitle>
-                <CardDescription className="text-lg">
-                  Create secure enclaves for your data analysis needs
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <p className="text-gray-600">
-                  Get started by creating your first data clean room enclave
-                </p>
-                <Link href="/create-enclave">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg">
-                    Create New Enclave
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+      <div className="grid grid-cols-1 gap-8">
+        {/* Active Data Clean Rooms Section */}
+        <section>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">Active Data Clean Rooms</h2>
+            <Button onClick={() => setDialogOpen(true)}>Create a new data clean room</Button>
           </div>
-        ) : (
-          // Marketplace Content
-          <div className="w-full max-w-7xl">
-            <h2 className="text-2xl font-bold mb-6">Data Marketplace</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockMarketplaceData.map((item) => (
-                <Card key={item.id}>
-                  <CardHeader>
-                    <CardTitle>{item.name}</CardTitle>
-                    <CardDescription>{item.provider}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 mb-4">{item.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-blue-600">{item.price}</span>
-                      <Button>View Details</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 rounded-full bg-background shadow-sm"
+              onClick={() => scroll("left", "activeRooms")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="relative overflow-hidden">
+              <div
+                ref={scrollContainers.activeRooms}
+                className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide"
+              >
+                {activeRooms.map((room) => (
+                  <Card key={room.id} className="w-[300px] flex-shrink-0 snap-start relative flex flex-col">
+                    {room.hasRequests && <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full" />}
+                    <CardHeader>
+                      <CardTitle>{room.name}</CardTitle>
+                      <CardDescription>{room.participants} participants</CardDescription>
+                    </CardHeader>
+                    <CardFooter className="mt-auto">
+                      <Badge>{room.status}</Badge>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 rounded-full bg-background shadow-sm"
+              onClick={() => scroll("right", "activeRooms")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-      </main>
-    </div>
+        </section>
+
+        {/* Customer Requests for Access Section */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Customer Requests for Access</h2>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 rounded-full bg-background shadow-sm"
+              onClick={() => scroll("left", "accessRequests")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="relative overflow-hidden">
+              <div
+                ref={scrollContainers.accessRequests}
+                className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide"
+              >
+                {accessRequests.map((request) => (
+                  <Card key={request.id} className="w-[300px] flex-shrink-0 snap-start flex flex-col">
+                    <CardHeader>
+                      <CardTitle>{request.company}</CardTitle>
+                      <CardDescription>Requesting access to: {request.room}</CardDescription>
+                    </CardHeader>
+                    <CardFooter className="mt-auto">
+                      <Badge
+                        variant={
+                          request.status === "Approved"
+                            ? "default"
+                            : request.status === "Rejected"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                      >
+                        {request.status}
+                      </Badge>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 rounded-full bg-background shadow-sm"
+              onClick={() => scroll("right", "accessRequests")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </section>
+
+        {/* Popular Public Rooms Section */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Popular Public Rooms</h2>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 rounded-full bg-background shadow-sm"
+              onClick={() => scroll("left", "popularRooms")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="relative overflow-hidden">
+              <div
+                ref={scrollContainers.popularRooms}
+                className="flex overflow-x-auto gap-4 snap-x snap-mandatory scrollbar-hide"
+              >
+                {popularRooms.map((room) => (
+                  <Card key={room.id} className="w-[300px] flex-shrink-0 snap-start flex flex-col">
+                    <CardHeader>
+                      <CardTitle>{room.name}</CardTitle>
+                      <CardDescription>{room.participants} participants</CardDescription>
+                    </CardHeader>
+                    <CardFooter className="mt-auto">
+                      <Badge variant="secondary">Popular</Badge>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 rounded-full bg-background shadow-sm"
+              onClick={() => scroll("right", "popularRooms")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </section>
+      </div>
+
+      <CreateRoomDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+    </main>
   )
 }
+

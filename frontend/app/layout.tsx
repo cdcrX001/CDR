@@ -1,39 +1,21 @@
-import "@/styles/globals.css";
-import { Metadata, Viewport } from "next";
-import clsx from "clsx";
-import { fontSans } from "@/config/fonts";
-
-export const metadata: Metadata = {
-  title: "Data Clean Room",
-  description: "Secure data analysis platform",
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
-};
+import { WalletProvider } from '@/context/wallet-context'
+import { NavBar } from '@/components/nav-bar'
+import "@/app/globals.css"
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html suppressHydrationWarning lang="en">
-      <head />
-      <body
-        className={clsx(
-          "min-h-screen bg-background font-sans antialiased",
-          fontSans.variable,
-        )}
-      >
-        {children}
+    <html lang="en">
+      <body>
+        <WalletProvider>
+          <NavBar />
+          {children}
+        </WalletProvider>
       </body>
     </html>
-  );
+  )
 }
+
