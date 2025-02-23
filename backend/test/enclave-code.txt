@@ -1,0 +1,109 @@
+from fastapi import FastAPI, HTTPException
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
+import base64
+
+app = FastAPI()
+
+# In-memory key mappings (should be stored securely)
+user_key_map = {}  # Maps U_pub to (E_priv, E_pub)
+ca_certificate_pem = b"""-----BEGIN CERTIFICATE-----
+MIIDPzCCAiegAwIBAgI...
+-----END CERTIFICATE-----"""  # Store CA cert securely
+
+
+def verify_certificate(cert_pem: str):
+    """Verify Cert_U against CA certificate"""
+    ca_cert = x509.load_pem_x509_certificate(ca_certificate_pem)
+    user_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+
+    # Verify signature
+    ca_cert.public_key().verify(
+        user_cert.signature,
+        user_cert.tbs_certificate_bytes,
+        padding.PKCS1v15(),
+        hashes.SHA256(),
+    )
+
+    return user_cert.public_key()
+
+
+@app.post("/register-user/")
+async def register_user(U_pub_pem: str, Cert_U: str):
+    """Step 4 & 5: User sends (U_pub, Cert_U), enclave verifies and maps keys"""
+    try:
+        # Verify certificate
+        verified_U_pub = verify_certificate(Cert_U)
+        
+        # Generate new enclave keypair (E_priv, E_pub) for user
+        E_priv = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        E_pub = E_priv.public_key()
+        
+        # Store mapping
+        user_key_map[U_pub_pem] = (E_priv, E_pub)
+        
+        # Encrypt E_pub using U_pub and return it
+        U_pub = serialization.load_pem_public_key(U_pub_pem.encode())
+        encrypted_E_pub = base64.b64encode(U_pub.encrypt(
+            E_pub.public_bytes(encoding=serialization.Encoding.PEM,
+                               format=serialization.PublicFormat.SubjectPublicKeyInfo),
+            padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                         algorithm=hashes.SHA256(),
+                         label=None)
+        )).decode()
+
+        return {"encrypted_E_pub": encrypted_E_pub}
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/process-query/")
+async def process_query(encrypted_query: str, signed_query: str):
+    """
+    Step 9: Identify user by verifying signed query.
+    Decrypt using mapped E_priv, process query, and return encrypted response.
+    """
+    try:
+        # Identify user based on signature
+        for U_pub_pem, (E_priv, E_pub) in user_key_map.items():
+            U_pub = serialization.load_pem_public_key(U_pub_pem.encode())
+
+            try:
+                # Verify signature
+                U_pub.verify(
+                    base64.b64decode(signed_query.encode()),
+                    base64.b64decode(encrypted_query.encode()),
+                    padding.PKCS1v15(),
+                    hashes.SHA256()
+                )
+
+                # If signature is valid, proceed with decryption
+                decrypted_query = E_priv.decrypt(
+                    base64.b64decode(encrypted_query.encode()),
+                    padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                 algorithm=hashes.SHA256(),
+                                 label=None)
+                ).decode()
+
+                # 🔹 Process the query against enclave dataset (Placeholder)
+                response = f"Processed query: {decrypted_query}"
+
+                # Encrypt response using U_pub
+                encrypted_response = base64.b64encode(U_pub.encrypt(
+                    response.encode(),
+                    padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                 algorithm=hashes.SHA256(),
+                                 label=None)
+                )).decode()
+
+                return {"encrypted_response": encrypted_response}
+
+            except Exception:
+                continue  # Try the next U_pub if verification fails
+
+        raise HTTPException(status_code=403, detail="User verification failed")
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

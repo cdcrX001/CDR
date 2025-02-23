@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import base64
+import httpx
 from pydantic import BaseModel
 from typing import List
 import os
@@ -243,6 +244,21 @@ async def generate_ca(enclaveid: str):
             "-subj", f"/CN={enclaveid}"
         ], check=True)
 
+        # Read the certificate and strip any extra whitespace/newlines
+        with open(certificate_path, "rb") as cert_file:
+            signed_cert = cert_file.read().decode('utf-8').strip()  # Use strip() to remove extra newlines
+
+        # Read the template_index.js
+        with open("app/template_index.js", "r") as template_file:
+            template_content = template_file.read()
+
+        # Replace the placeholder with the actual certificate
+        updated_content = template_content.replace("{{caCertPem}}", signed_cert.replace("\n", ""))
+
+        # Write the updated content to index.js
+        with open("test/hello-enclave/index.js", "w") as index_file:
+            index_file.write(updated_content)
+
         # Store the mapping in the database
         with get_db() as conn:
             conn.execute(
@@ -250,6 +266,24 @@ async def generate_ca(enclaveid: str):
                 (enclaveid, private_key_path, certificate_path)
             )
             conn.commit()
+
+        # i want to see the current directory using subprocess
+        print("Current directory:")
+        result = subprocess.run(["pwd"], capture_output=True, text=True)
+        print(result.stdout)
+        
+        # Change directory using os.chdir instead of subprocess
+        os.chdir("test/hello-enclave")
+        
+        print("starting to build enclave")
+        subprocess.run(["ev", "enclave", "init", "-f", "Dockerfile", "--name", "hello-enclave", "--egress"])
+
+        print("Building enclave")
+        subprocess.run(["ev", "enclave", "build", "-v", "--output", "."])
+        subprocess.run(["ev", "enclave", "deploy", "-v", "--eif-path", "./enclave.eif"])
+
+        # Change back to original directory
+        os.chdir("../..")
 
         return {"message": "CA generated successfully", "enclaveid": enclaveid}
 
@@ -304,3 +338,62 @@ async def request_access(enclaveid: str, request: RequestAccess):
         return {"message": "Access request received"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing access request: {str(e)}")
+    
+
+
+
+
+
+
+
+
+
+
+@app.post("/register-user/")
+async def register_user(enclaveid: str, signed_cert: str, public_key: str):
+    """Register user with enclave and get an encrypted key"""
+    try:
+        # Prepare the data to send to the external endpoint
+        data = {
+            "signed_cert": signed_cert,
+            "public_key": public_key
+        }
+
+        # https://{enclaveid}.app-73f7d14326e6.enclave.evervault.com
+
+
+        # Send the request to the external endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"https://{enclaveid}.app-73f7d14326e6.enclave.evervault.com/register-user", json=data)
+            response.raise_for_status()  # Raise an error for bad responses
+
+        # Return the encrypted key received from the external service
+        return response.json()
+
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"Error registering user: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing registration: {str(e)}")
+
+@app.post("/process-query/")
+async def process_query(encrypted_query: str, signed_query: str , enclaveid: str):
+    """Process the encrypted query and signed query"""
+    try:
+        # Prepare the data to send to the external endpoint
+        data = {
+            "encrypted_query": encrypted_query,
+            "signed_query": signed_query,
+        }
+
+        # Send the request to the external endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"https://{enclaveid}.app-73f7d14326e6.enclave.evervault.com/process-query", json=data)
+            response.raise_for_status()  # Raise an error for bad responses
+
+        # Return the response from the external service
+        return response.json()
+
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"Error processing query: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
