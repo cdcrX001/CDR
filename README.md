@@ -18,6 +18,9 @@ In today’s digital landscape, organizations struggle to collaborate on dataset
 ## 🚀 How It Works
 1️⃣ **Enclave Creation:** The owner initializes a secure enclave, generating a **CA certificate and private key** for signing user certificates (**These cert and private key are stored in HSM/Credential manager**)
 
+<img width="583" alt="image" src="https://github.com/user-attachments/assets/835f84ac-8a88-43e7-8785-59804736a826" />
+
+
 2️⃣ **User Registration & Authentication:**
    - The user generates a key pair (**U_priv, U_pub**).
    - The UI creates a CSR for **U_pub** and sends it to the backend.
