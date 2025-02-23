@@ -2,7 +2,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import base64
 import httpx
@@ -14,11 +14,19 @@ import sqlite3
 from contextlib import contextmanager
 import json
 from datetime import datetime, timedelta
+import time
 
 # Create a model for the request body
 class CSRRequest(BaseModel):
     enclaveid: str
     csr_pem: str
+
+
+class RegisterUserRequest(BaseModel):
+    signed_cert: str
+    public_key: str
+    enclaveid: str
+
 
 # Add this model for dataset details
 class DatasetDetails(BaseModel):
@@ -256,7 +264,7 @@ async def generate_ca(enclaveid: str):
         updated_content = template_content.replace("{{caCertPem}}", signed_cert.replace("\n", ""))
 
         # Write the updated content to index.js
-        with open("test/hello-enclave/index.js", "w") as index_file:
+        with open("test/test-enclave/hello-enclave/index.js", "w") as index_file:
             index_file.write(updated_content)
 
         # Store the mapping in the database
@@ -267,18 +275,39 @@ async def generate_ca(enclaveid: str):
             )
             conn.commit()
 
+
+
+        # open the package.json file and change the name to the enclaveid
+        with open("app/package_template.json", "r") as package_file:
+            package_content = package_file.read()
+        package_content = package_content.replace("{{enclaveid}}", enclaveid)
+        with open("test/test-enclave/hello-enclave/package.json", "w") as package_file:
+            package_file.write(package_content)
+
+        # even get the package-lock.json file and change the name to the enclaveid
+        with open("app/package-lock_template.json", "r") as package_lock_file:
+            package_lock_content = package_lock_file.read()
+        package_lock_content = package_lock_content.replace("{{enclaveid}}", enclaveid)
+        with open("test/test-enclave/hello-enclave/package-lock.json", "w") as package_lock_file:
+            package_lock_file.write(package_lock_content)
+
+
+
         # i want to see the current directory using subprocess
         print("Current directory:")
         result = subprocess.run(["pwd"], capture_output=True, text=True)
         print(result.stdout)
         
         # Change directory using os.chdir instead of subprocess
-        os.chdir("test/hello-enclave")
+        os.chdir("test/test-enclave/hello-enclave")
+        result = subprocess.run(["pwd"], capture_output=True, text=True)
+        print(result.stdout)
         
-        print("starting to build enclave")
-        subprocess.run(["ev", "enclave", "init", "-f", "Dockerfile", "--name", "hello-enclave", "--egress"])
-
-        print("Building enclave")
+        print("starting to build enclave" , enclaveid)
+        command = ["ev", "enclave", "init", "-f", "Dockerfile", "--name", enclaveid, "--egress"]
+        print(command)
+        result = subprocess.run(command)
+        print("this came here " , result.stdout)
         subprocess.run(["ev", "enclave", "build", "-v", "--output", "."])
         subprocess.run(["ev", "enclave", "deploy", "-v", "--eif-path", "./enclave.eif"])
 
@@ -350,23 +379,35 @@ async def request_access(enclaveid: str, request: RequestAccess):
 
 
 @app.post("/register-user/")
-async def register_user(enclaveid: str, signed_cert: str, public_key: str):
+async def register_user( request: RegisterUserRequest):
     """Register user with enclave and get an encrypted key"""
     try:
+        # Print the request body
         # Prepare the data to send to the external endpoint
+        #  would be sent as base64 encoded string
+        
+        signed_cert = request.signed_cert
+        public_key = request.public_key
+        
+        # decode the base64 encoded string
+        signed_cert = base64.b64decode(signed_cert).decode('utf-8')
+        public_key = base64.b64decode(public_key).decode('utf-8')
+        
         data = {
             "signed_cert": signed_cert,
             "public_key": public_key
         }
+        
 
         # https://{enclaveid}.app-73f7d14326e6.enclave.evervault.com
 
 
         # Send the request to the external endpoint
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"https://{enclaveid}.app-73f7d14326e6.enclave.evervault.com/register-user", json=data)
+            response = await client.post(f"https://{request.enclaveid}.app-73f7d14326e6.enclave.evervault.com/register-user", json=data)
             response.raise_for_status()  # Raise an error for bad responses
 
+        
         # Return the encrypted key received from the external service
         return response.json()
 

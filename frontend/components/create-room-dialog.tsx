@@ -72,7 +72,7 @@ export function CreateRoomDialog({
     const handleDatasetSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsLoading(true);
-      const enclaveId = uuidv4(); // Generate a new enclave ID
+      const enclaveId = uuidv4().substring(0, 20); // Generate a new enclave ID and shorten it to 20 characters
       
       try {
           // First generate the CA with the same enclaveId
