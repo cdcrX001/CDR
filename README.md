@@ -45,7 +45,7 @@ In today’s digital landscape, organizations struggle to collaborate on dataset
 - **Cryptography Libraries** – RSA, x509 Certificates, Digital Signatures
 - **Multi-Party Computation (MPC)** – (Optional) Enhancing security for federated learning
 - **Docker & Kubernetes** – Containerization & Scalability
-- **Azure Confidential Computing / AWS Nitro Enclaves** – Secure execution environment
+- **AWS Nitro Enclaves** – Secure execution environment using Evervault enclaves. **https://evervault.com/primitives/enclaves**
 
 ---
 ## 📌 Use Cases
