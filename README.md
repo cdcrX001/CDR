@@ -69,8 +69,8 @@ In today’s digital landscape, organizations struggle to collaborate on dataset
 Clone the repository and install dependencies:
 ```sh
 # Clone the repository
-git clone https://github.com/yourrepo/sdce.git
-cd sdce
+git clone https://github.com/yourrepo/cdr.git
+cd cdr
 
 # Install dependencies
 pip install -r requirements.txt  # If using FastAPI
@@ -80,40 +80,13 @@ npm install                      # If using Express.js
 ### Running the Enclave Server
 ```sh
 # Start the backend (FastAPI Example)
-uvicorn app:app --host 0.0.0.0 --port 8000
+cd backend
+uvicorn signing:app --host 0.0.0.0 --port 8000
 
 # Start the backend (Express.js Example)
+cd frontend
 npm start
 ```
-
-### Testing the Workflow
-#### 1️⃣ Generate User Key Pair
-```sh
-openssl genpkey -algorithm RSA -out user_priv.pem
-openssl rsa -pubout -in user_priv.pem -out user_pub.pem
-```
-#### 2️⃣ Create a CSR & Get Certificate
-```sh
-openssl req -new -key user_priv.pem -out user.csr -subj "/CN=User1"
-# Send user.csr to the backend for signing
-```
-#### 3️⃣ Encrypt & Send Query
-```python
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
-
-# Encrypt query using E_pub and sign with U_priv
-query = "SELECT * FROM dataset WHERE id=1"
-...
-# Send to enclave for processing
-```
-
-#### 4️⃣ Receive Encrypted Response & Decrypt
-```python
-# Decrypt using U_priv
-...
-```
-
 ---
 ## 🤝 Contributing
 We welcome contributions from the open-source community! If you have ideas or improvements, feel free to **open an issue** or **submit a pull request**.
@@ -125,9 +98,8 @@ This project is licensed under the **MIT License**.
 ---
 ## 📬 Contact
 For any inquiries, feel free to reach out:
-📧 **Email:** yourname@example.com  
-🌐 **Website:** [yourproject.com](https://yourproject.com)  
-📌 **GitHub:** [github.com/yourrepo](https://github.com/yourrepo)
+📧 **Email:** cdcr3001@gmail.com  
+📌 **GitHub:** [github.com/yourrepo](https://github.com/cdcrX001/CDR/)
 
 ---
 **Empowering secure data collaboration – because your data should remain yours, even in use!** 🚀
