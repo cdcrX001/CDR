@@ -1,0 +1,7 @@
+frontend/.env
+backend/.env
+
+
+
+backend/*.pem
+**.pem
